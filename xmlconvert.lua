@@ -10,7 +10,7 @@ local preconverted = {
 		.. "local path_to_plugins = GAMESTATE:GetCurrentSong():GetSongDir()..'plugins/'\n"
 		.. "local af = Def.ActorFrame {}\n"
 		.. "for _, filename in ipairs(FILEMAN:GetDirListing(path_to_plugins)) do\n"
-		.. "	if string.sub(p[i], -4, -1) == '.lua' then\n"
+		.. "	if string.sub(filename, -4, -1) == '.lua' then\n"
 		.. "		af[#af + 1] = loadfile(path_to_plugins..filename)()\n"
 		.. "	end\n"
 		.. "end\n"
