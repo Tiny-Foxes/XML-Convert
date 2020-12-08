@@ -321,9 +321,12 @@ function escape_string(str)
 end
 
 function simplify_path(path)
-	return (path:gsub('//+','/')
+	local result = path
+		:gsub('\\+','/')
+		:gsub('//+','/')
 		:gsub('[^/]+/%.%./', '')
-		:gsub('%./',''))
+		:gsub('%./','')
+	return result
 end
 
 local firstparamisstring = {
@@ -464,20 +467,24 @@ end
 
 function read_attributes_from_ini(tag, filename, filenamefromsong, filenamefromloader)
 	local file = io.open(filename)
-	local inicode = file:read('*a')
-	file:close()
-	for line in inicode:gmatch('[^\r\n]+') do
-		local key, val = line:match("^([^ =]+)=(.*)$")
-		if key and val then
-			if key == "Texture"
-			or key == "Meshes"
-			or key == "Materials"
-			or key == "Bones"
-			or key == "File" then
-				val = filenamefromloader .. val
+	if file then
+		local inicode = file:read('*a')
+		file:close()
+		for line in inicode:gmatch('[^\r\n]+') do
+			local key, val = line:match("^([^ =]+)=(.*)$")
+			if key and val then
+				if key == "Texture"
+				or key == "Meshes"
+				or key == "Materials"
+				or key == "Bones"
+				or key == "File" then
+					val = filenamefromloader .. val
+				end
+				process_attr(tag, key, val, state, level)
 			end
-			process_attr(tag, key, val, state, level)
 		end
+	else
+		print("warning: could not find file \"".. filename .."\"")
 	end
 end
 
@@ -553,25 +560,32 @@ function emit(tag, filename, filenamefromsong, state, level, out)
 				val = File:sub(2),
 			})
 		else
+			File = File:gsub('\\','/')
 			local path = filename:match(".+/") or './'
 			local pathfromsong = filenamefromsong:match(".+/") or './'
 			local FilePath = File:match(".+/") or './'
 			local ext = File:match('%.[^%./]+$')
 			if not ext then
-				for item in lfs.dir(simplify_path(path..'/'..FilePath)) do
-					if item == File and lfs.attributes(path..'/'..File).mode == "directory" then
-						ext = ".xml"
-					    File = File..'/default.xml'
+				local dir = simplify_path(path..'/'..FilePath)
+				if lfs.attributes(dir) then
+					for item in lfs.dir(dir) do
+						if item == File and lfs.attributes(path..'/'..File).mode == "directory" then
+							ext = ".xml"
+							File = File..'/default.xml'
+						end
+						local itemext = item:match('%.[^%./]+$')
+						if itemext and itemext ~= '.lua' and File:match('[^/]*$')..itemext == item then
+							ext = itemext
+							File=File..ext
+						end
 					end
-					local itemext = item:match('%.[^%./]+$')
-					if itemext and itemext ~= '.lua' and File:match('[^/]*$')..itemext == item then
-						ext = itemext
-						File=File..ext
+					if not ext then
+						ext = '.png'
+						print('could not determine extension '..File..'. because it is kind of likely that this is due to like dimensions or (doubleres) or something, we guess that it should be a sprite type')
 					end
-				end
-				if not ext then
+				else
+					print("warning: Directory \""..dir.."\" does not exist.")
 					ext = '.png'
-					print('could not determine extension '..File..'. because it is kind of likely that this is due to like dimensions or (doubleres) or something, we guess that it should be a sprite type')
 				end
 			end
 			if ext == '.xml' then
